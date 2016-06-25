@@ -1,44 +1,107 @@
 var path = require('path');
 var webpack = require('webpack');
-var tracker = require('webpack-bundle-tracker');
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+var OpenBrowserPlugin = require('open-browser-webpack-plugin');
+var WebpackDevServer = require('webpack-dev-server');
 
 module.exports = {
   context: __dirname,
 
-  entry: './assets/js/index', // entry point of our app. assets/js/index.js should require other js modules and dependencies it needs
-
+  entry:  [
+    'webpack-dev-server/client?http://0.0.0.0:8080',
+    'webpack/hot/only-dev-server',
+    'webpack-hot-middleware/client',
+    './src/app/main' // entry point of our app
+  ],
+   /*
+    * By default, thewebpack-dev-serverwill serve the files in the root of the project.
+    * To serve files from a different folder (such as the "public" folder in our sample project,
+    * you need to configure a specific content base
+    */
+  devServer: {
+    contentBase: "./src/app/main",
+    hot: true
+  },
   output: {
-      path: path.resolve('./assets/bundles/'),
-      filename: "bundle.[name].js",
+      path: path.resolve('./src/public/dist/'),
+      filename: "[name].bundle.js",
   },
 
   plugins: [
-    new BundleTracker({filename: './webpack-stats.json'}),
-  ],
+   new webpack.NoErrorsPlugin(),
+   new ExtractTextPlugin('[name].css'),// It moves every css requires/imports into a separate css output file
+                                      //(So your styles are no longer inlined into the JavaScript
+   new HtmlWebpackPlugin({
+      title: 'React Starter Kit ;)',
+      template: path.join(__dirname, 'src/app/index.html'),
+      inject: 'body'
+    }),
+   new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+    }),
+   new OpenBrowserPlugin({ url: 'http://localhost:8080' }),
+   /*
+    * Hot module replacement is a Webpack plugin that updates the component
+    * in real time on the browser when you change its code
+    */
+   new webpack.HotModuleReplacementPlugin(),
+ ],
 
   module: {
     loaders: [
-      { //npm install --save-dev babel-core babel-loader babel-preset-es2015 babel-preset-react
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: 'babel',
-        query: {
-          presets: ['es2015','react']
-        }
-      },
-      { //npm install --save-dev style-loader css-loader
-        test: /\.css$/,
-        loader: 'style!css?modules!postcss'
+     /*
+      * You can either use the jsx-loader or babel-loader to pre-compile JSX into JavaScript (React baby!)
+      * if you write your code in JSX and ES6, then you’ll need to use the babel-loader, along with the babel plugin for React
+      * npm install babel-core babel-loader babel-preset-es2015 babel-preset-react (shown below)
+      */
+      {
+      test: /\.js?$/,
+      exclude: /node_modules/,
+      loader: "babel",
+      presets: ['es2015', 'react']
       },
       {
-        test:/\.json$/,
-        loader:'json'
-      }
+        /*
+         * It moves every require("style.css") in entry chunks into a separate css output file.
+         * So your styles are no longer inlined into the javascript, but separate in a css bundle file (styles.css).
+         * If your total stylesheet volume is big, it will be faster
+         * because the stylesheet bundle is loaded in parallel to the javascript bundle.
+         */
+        test: /\.scss$/,
+        exclude: /node_modules/,
+        loader: ExtractTextPlugin.extract(
+          'css!' +
+          'postcss!' +
+          'css-loader?sourceMap'
+        )
+      },
     ],
   },
+  sassLoader: {
+    includePaths: [path.resolve(__dirname, './node_modules')]
+  },
+  // PostCSS plugin to parse CSS and add vendor prefixes to CSS rules
+  postcss: [
+    require('autoprefixer')
+  ],
+
+  devtool: 'source-map',
 
   resolve: {
     modulesDirectories: ['node_modules', 'bower_components'],
-    extensions: ['', '.js', '.jsx']
+    extensions: ['', '.js', '.jsx'],
+    /*
+     * We can declare aliases in many ways so we could not rely on relative paths
+     * but just reference our code as regular node modules, this is AMAZING! :)
+     */
+    alias: {
+      'app': path.resolve(__dirname, './src/app'),
+      'lib': path.resolve(__dirname, './src/app/lib'),
+      'containers': path.resolve(__dirname, './src/app/containers'),
+      'components': path.resolve(__dirname, './src/app/components'),
+      'styles': path.resolve(__dirname, './src/styles'),
+      'bootstrap': 'react-bootstrap/lib'
+    }
   },
 }
