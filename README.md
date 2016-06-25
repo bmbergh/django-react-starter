@@ -1,4 +1,5 @@
 #Django React Starter
+*Initial setup with django, react and webpack.*
 
 ##What is Webpack?
 Webpack is a module bundler: A tool that can analyze your project's structure, 
